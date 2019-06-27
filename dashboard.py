@@ -1,79 +1,72 @@
 import dash
+# import dash_auth
 from dash.dependencies import Input, Output
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Output, Input
 import csv
-import pandas
-import pandas_datareader.data as web
-import datetime as d
+import pandas as pd
 import plotly
 import plotly.graph_objs as go
-import random
-from collections import deque
+import base64
+import flask
+# from dash_google_auth import GoogleOAuth
 
-app=dash.Dash(__name__)
+# VALID_USERNAME_PASSWORD_PAIRS = {
+#     'henriley': '1234'
+# }
 
-upfits_csv='fakefits.csv'
+### CSS that allows for real time updates of the grpahs and charts ###
 
-r=csv.reader(open(upfits_csv,"r"))
+external_stylesheets=["https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css"]
+external_scripts=["https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js",
+                  'https://pythonprogramming.net/static/socialsentiment/googleanalytics.js']
 
-titles=[]
-start_date=[]
-end_date=[]
-reach=[]
-impression=[]
-ctr=[]
-cost=[]
-clicks=[]
-spent=[]
-comments=[]
-reactions=[]
-shares=[]
-video=[]
-avg_time_watched=[]
-video_plays=[]
+### Initializes the app to start running ###
 
-for row in r:
-    titles.append(row[0])
-    start_date.append(row[1])
-    end_date.append(row[2])
-    reach.append(row[3])
-    impression.append(row[4])
-    ctr.append(row[5])
-    cost.append(row[6])
-    clicks.append(row[7])
-    spent.append(row[8])
-    comments.append(row[9])
-    reactions.append(row[10])
-    shares.append(row[11])
-    video.append(row[12])
-    avg_time_watched.append(row[18])
-    video_plays.append(row[19])
+app=dash.Dash(__name__, external_stylesheets=external_stylesheets, external_scripts=external_scripts)
+# auth = dash_auth.BasicAuth(
+#     app,
+#     VALID_USERNAME_PASSWORD_PAIRS
+# )
 
-data_dict={
-    'titles':titles,
-    'start_date':start_date,
-    'end_date':end_date,
-    'reach':reach,
-    'impression':impression,
-    'ctr':ctr,
-    'cost':cost,
-    'clicks':clicks,
-    'spent':spent,
-    'comments':comments,
-    'reactions':reactions,
-    'shares':shares,
-    'video':video,
-    'avg_time_wacthed':avg_time_watched,
-    'video_plays':video_plays
-}
+### Makes app dash app run locally on your computer ###
 
-for x in data_dict.values():
-    del x[2]
-    del x[8]
+app.css.config.serve_locally=True
+app.scripts.config.serve_locally=True
+app.config['suppress_callback_exceptions']=True
 
-### Example of How a Graph Could Look -- Plotly and Dash
+## Loads in the CSV of the data ###
+
+df=pd.read_csv('fakefits.csv').rename(columns={'Unnamed: 0':'Title'}).drop([1, 8]).fillna('NONE').to_dict('records')
+
+campaign_dict={}
+
+campaign_dict['Campaign 1']=df[0]
+campaign_dict['Campaign 2']=[
+    df[1], df[2], df[3], df[4], df[5], df[6]]
+campaign_dict['Campaign 3']=[
+    df[7], df[8]]
+
+campaigns_list=[
+    'Campaign 1']
+
+camp_1_keys=[x for x in campaign_dict['Campaign 1'].keys()][:12]
+camp_1_values=[x for x in campaign_dict['Campaign 1'].values()][:12]
+del camp_1_keys[0:3]
+del camp_1_values[0:3]
+
+# camp_2_keys=[x for x in campaign_dict['Campaign 2'].keys()][:12]
+# camp_2_values=[x for x in campaign_dict['Campaign 2'].values()][:12]
+# del camp_2_keys[0:3]
+# del camp_2_values[0:3]
+
+# camp_3_keys=[x for x in campaign_dict['Campaign 3'].keys()][:12]
+# camp_3_values=[x for x in campaign_dict['Campaign 3'].values()][:12]
+# del camp_3_keys[0:3]
+# del camp_3_values[0:3]
+
+### These are the company colors used throughout branding. Use them for the styling of the graphs, charts, and labels ###
 
 colors={
     'background':'#FFFFFF',
@@ -83,109 +76,98 @@ colors={
     'chart_bar':'#888888'
 }
 
-# data=[go.Bar(
-#     x=data_dict['titles'][1:],
-#     y=data_dict['spent'][1:],
-#     text=data_dict['spent'][1:],
-#     textposition='outside',
-#     marker=dict(
-#         color=colors['bar1'],
-#         line=dict(
-#             color=colors['chart_bar'],
-#             width=1.5),
-#             ),
-#             opacity=.6
-#             )]
-
-# layout=go.Layout(
-#     plot_bgcolor=colors['background'],
-#     paper_bgcolor=colors['background'],
-#     xaxis=dict(
-#         title='Campaign',
-#         titlefont=dict(
-#             family='Arial',
-#             color=colors['text'],
-#             size=24
-#         ),
-#         showticklabels=False),
-#     yaxis=dict(
-#         title='Amount Spent',
-#         titlefont=dict(
-#             family='Arial',
-#             color=colors['text'],
-#             size=24
-#         ),
-#         showticklabels=True
-#     )
-# )
-
-
-# app.layout=html.Div(style={'backgroundColor': colors['background']}, children=[
-#     html.H1(
-#         children='Campaign Spending Graph',
-#         style={
-#             'textAlign':'center',
-#             'color':colors['text'],
-#             'font-family':'Arial'
-#         }
-#     ),
-    
-#     dcc.Graph(
-#         id='example-graph',
-#         figure={
-#             'data':data,
-#             'layout':layout
-#                 }
-#     )
-#     ])
-
-### Example of How a Graph Could Look -- Dash ###
-
-# app.layout=html.Div(children=[
-#     html.H1(children='Cost Graph'),
-
-#     dcc.Graph(
-#         id='example',
-#         figure={
-#             'data':[
-#                 {'x':data_dict['titles'][1:], 'y':data_dict['cost'][1:], 'type':'bar', 'name':'Cost'}  
-#             ],
-#             'layout':{
-#                 'title':'Cost'
-#             }
-#         }
-#     )
-# ])
-
 ### Actual Dashboard ###
+
+image_filename='images/OneMagnify_logo_stacked_green_gray_rgb.png' ### Replace with your own image ###
+encoded_image=base64.b64encode(open(image_filename, 'rb').read())
+
+
+### This creates the header and inserts the OneMagnify logo ###
 
 app.layout=html.Div([
     html.Div([
-        html.H1('Ford Upfits',
-        style={'float':'left',
-        }),
-    ]),
-    dcc.Dropdown(id='upfits-data',
-        options=[{'label':s, 'value':s}
-            for s in data_dict.keys()],
-         value=['Cost per Result', 'Amount Spent', 'Reach'],
-         multi=True
-         ),
-    html.Div(children=html.Div(id='graphs'), className='row'),
-    dcc.Interval(
-        id='graph-interval',
-        interval=100,
-        n_intervals=0),
-], className='container', style={'width':'98%', 'margin-left':10, 'margin-right':10, 'max-width':500000})
+        html.Span("Ford Upfits", className='app-title'),
+        html.Div(
+            html.Img(src='data:image/png;base64,{}'.format(encoded_image.decode()), className='om-logo'))],
+        className="row header"),
 
+### Creates the tabs that allow you to switch between the different metrics (Email, Social Media, Website, Direct Mail) ###
 
-# @app.callback(
-#     dash.dependencies.Output('graphs', 'children'),
-#     [dash.dependencies.Input('upfits-data','value')],
-# )
+    dcc.Tabs(
+        id="tabs",
+        value='social_media_tab',
+        parent_className='custom-tabs',
+        className='tabs-container',
+        children=[
+            dcc.Tab(label="Social Media",
+                    value="social_media_tab",
+                    className='custom-tab',
+                    selected_className='custom-tab--selected'
+                    ),
+            dcc.Tab(label="Email",
+                    value="email_tab",
+                    className='custom-tab',
+                    selected_className='custom-tab--selected'
+                    ),
+            dcc.Tab(label="Direct Mail",
+                    value="direct_mail_tab",
+                    className='custom-tab',
+                    selected_className='custom-tab--selected'
+                    ),
+        ]),
+    html.Div(id='tabs-content-classes')])
+
+### Wrapper that populates each of the tabs with the correct information ###
 
 @app.callback(
-    Output('graphs','children'),
+    Output('tabs-content-classes', 'children'),
+    [Input('tabs', 'value')]
+)
+
+def render_content(tab):
+    if tab=="social_media_tab":
+        return html.Div([
+            dcc.Markdown('''
+#### FCC Social Key Insights
+
+* 1) 3 Social Campaigns launched in Q1 - Transit Upfit Incentive, FordUpfits.com Announcement and Spring CVS							
+* 2) 18 sales can be attributed to the Q1 social campaigns							
+* 3) Q1 social ads reached 375,514 users, delivered 1.8M impressions, and had an average CTR of 3.06%							
+* 4) The RV-Interests-Recreational and Handraisers w/Lookalikes-Recreation social ads had the highest CTRs in Q1							
+* 5) The Handraisers w/Lookalikes-Recreation social ad also received the most user engagement with 22 comments, 341 reactions, and 76 shares							
+* 6) The 2018 FTT social ads received over 3 million impressions and had a collective reach of over 600k and an average CTR of 1.25%							
+* 7) With last year's metrics in mind, the 2019 social campaigns are tracking to exceed the number of impressions and reach received in 2018
+''', className='markdown-social'),
+            dcc.Dropdown(
+                    id='upfits-data',
+                    options=[{'label':s, 'value':s}
+                    for s in campaigns_list],
+                    value=['Campaign 1'],
+                    multi=True,
+                    className='dropdown'
+                    ),
+            html.Div(
+                    children=html.Div(
+                    id='bar-graphs'),
+                    className='row'),
+            
+            dcc.Interval(
+                    id='graph-interval',
+                    interval=1*1000,
+                    n_intervals=0),
+                    ], 
+                className='container')
+    if tab=="email_tab":
+        return html.Div([
+            html.H1('HI REMA')])
+    if tab=="direct_mail_tab":
+        return html.Div([
+            html.H1('HI MEAGEN')])
+
+### Wrapper that goes through the IDs of each graph, and updates them over time -- this is what allows the graphs to be real time or respond to user input ###
+
+@app.callback(
+    Output('bar-graphs','children'),
     [Input('upfits-data','value'), Input('graph-interval','n_intervals')]
 )
 
@@ -201,154 +183,51 @@ def update_graph(data_name, n_interval):
 
 
     for x in data_name:
-        data=[go.Bar(
-            x=data_dict['titles'][1:],
-            y=data_dict[data_name][1:],
-            text=data_dict[data_name][1:],
-            textposition='outside',
-            marker=dict(
-                color=colors['bar1'],
-                line=dict(
-                    color=colors['chart_bar'],
-                    width=1.5),
-                    ),
-                    opacity=.6
-                    )]
+        if x=='Campaign 1':
+            data=[go.Bar(
+                x=camp_1_keys,
+                y=camp_1_values,
+                text=camp_1_values,
+                textposition='outside',
+                marker=dict(
+                    color=colors['bar1'],
+                    line=dict(
+                        color=colors['chart_bar'],
+                        width=1.5),
+                        ),
+                opacity=.6)]
 
-    layout=go.Layout(
-        plot_bgcolor=colors['background'],
-        paper_bgcolor=colors['background'],
-        xaxis=dict(
-            title='Campaign Name',
-            titlefont=dict(
-                family='Arial',
-                color=colors['text'],
-                size=24
-                ),
-                showticklabels=False),
-                yaxis=dict(
-                    title='{}'.format(data_name)
-                    ,
+            layout=go.Layout(
+                height=500,
+                plot_bgcolor=colors['background'],
+                paper_bgcolor=colors['background'],
+                title=dict(
+                    text='Campaign 1',
+                    xref='paper',
+                    x=0),
+                xaxis=dict(
+                    title='Metric Name',
                     titlefont=dict(
                         family='Arial',
                         color=colors['text'],
-                        size=24
-                        ),
-                        showticklabels=True
-                        ),
-                margin={'l':50, 'r':1, 't':45, 'b':1}
-                        )
-        
-        # data=go.Bar(
-        #     x=data_dict['titles'][1:]
-        #     y=data_dict[data_name]
-        #     name='Graph'
-        #     )
-        
-    graphs.append(html.Div(dcc.Graph(
-            id=data_name,
-            figure={'data':[data], 'layout': layout}
-        )))
+                        size=24),
+                        showticklabels=False),
+                yaxis=dict(
+                    title='Number',
+                    titlefont=dict(
+                        family='Arial',
+                        color=colors['text'],
+                        size=24),
+                        showticklabels=True),
+                margin={'l':60,'r':10,'t':45})
 
+            graphs.append(html.Div(dcc.Graph(
+                    id=x,
+                    animate=False,
+                    figure={'data':data, 'layout': layout}
+                ), className=class_choice))
 
-### Live Updates of Stocks -- Doesn't Work###
-
-# X=deque(maxlen=20)
-# Y=deque(maxlen=20)
-# X.append(1)
-# Y.append(1)
-
-# app=dash.Dash(__name__)
-# app.layout=html.Div([
-#     dcc.Graph(id='live-graph', animate=True),
-#     dcc.Interval(
-#         id='graph-interval',
-#         interval=100
-#     )
-# ])
-
-# @app.callback(
-#     Output('live-graph', 'figure'),
-#     [Input('graph-interval', 'n_intervals')])
-
-# def graph_updates():
-#     X.append(X[-1]+1)
-#     Y.append(Y[-1]+(Y[-1]*random.uniform(-0.1,0.1)))
-
-#     data=go.Scatter(
-#         x=list(X),
-#         y=list(Y),
-#         name='Live Scatterplot',
-#         mode='lines+markers'
-#     )
-
-#     return {'data':[data], 'layout':go.Layout(xaxis=dict(range=[min(X),max(X)], \
-#     yaxis=dict(min(Y),max(Y))))}
-
-
-### Stock Lookup Dashboard ###
-
-# app = dash.Dash(__name__)
-# app.layout = html.Div(children=[
-#     html.Div(children='Stock Dashboard'),
-#     dcc.Input(id='input', value='', type='text'),
-#     html.Div(id='output-graph')])
-
-# @app.callback(
-#     Output(component_id='output-graph', component_property='children'),
-#     [Input(component_id='input', component_property='value')]
-# )
-# def make_graph(data):
-#     start=d.datetime(2015,1,1)
-#     end=d.datetime.now()
-#     df = web.DataReader(data, 'yahoo', start, end)
-#     return dcc.Graph(
-#         id='example-graph',
-#         figure={
-#             'data':[
-#                 {'x':df.index,'y':df.Close, 'type':'line', 'name':data},
-#             ],
-#             'layout':{'title':data}
-#         }
-#     )
-
-
-### NOT MINE -- Dashboard with Live Updates
-
-# X = deque(maxlen=20)
-# X.append(1)
-# Y = deque(maxlen=20)
-# Y.append(1)
-
-# app = dash.Dash(__name__)
-
-# app.layout = html.Div(
-#     [
-#         dcc.Graph(id='live-graph', animate=True),
-#         dcc.Interval(
-#             id='graph-update',
-#             interval=1000,
-#             n_intervals = 0
-#         ),
-#     ]
-# )
-
-# @app.callback(Output('live-graph', 'figure'),
-#         [Input('graph-update', 'n_intervals')])
-
-# def update_graph_scatter(n):
-#     X.append(X[-1]+1)
-#     Y.append(Y[-1]+Y[-1]*random.uniform(-0.1,0.1))
-
-#     data = plotly.graph_objs.Scatter(
-#             x=list(X),
-#             y=list(Y),
-#             name='Scatter',
-#             mode= 'lines+markers'
-#             )
-
-#     return {'data': [data],'layout' : go.Layout(xaxis=dict(range=[min(X),max(X)]),
-#                                                 yaxis=dict(range=[min(Y),max(Y)]),)}
+    return graphs
 
 if __name__ == '__main__':
     app.run_server(debug=True)
